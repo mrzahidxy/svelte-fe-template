@@ -1,4 +1,4 @@
-name: Deploy to Vercel
+name: Deploy SvelteKit to Vercel
 
 on:
   push:
@@ -6,27 +6,42 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  # non-sensitive config
+  NODE_OPTIONS: "--max_old_space_size=4096"
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Install Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Set env for Vite/SvelteKit
-        run: echo "PUBLIC_API_BASE_URL=${{ secrets.PUBLIC_API_BASE_URL }}" >> $GITHUB_ENV
+      - name: Export SvelteKit public envs
+        run: |
+          echo "PUBLIC_API_BASE_URL=${{ secrets.PUBLIC_API_BASE_URL }}" >> $GITHUB_ENV
 
-      - run: npm run build
-
-      # Optionally run tests/lint here
+      - name: Build SvelteKit app
+        run: npm run build
 
       - name: Deploy to Vercel
-        run: npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npx vercel --prod \
+            --token $VERCEL_TOKEN \
+            --org $VERCEL_ORG_ID \
+            --project $VERCEL_PROJECT_ID \
+            --yes
