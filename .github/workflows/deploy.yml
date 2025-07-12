@@ -21,6 +21,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Set env for Vite/SvelteKit
+        run: echo "PUBLIC_API_BASE_URL=${{ secrets.PUBLIC_API_BASE_URL }}" >> $GITHUB_ENV
+
       - run: npm run build
 
       # Optionally run tests/lint here
