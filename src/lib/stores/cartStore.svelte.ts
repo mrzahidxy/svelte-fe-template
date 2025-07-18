@@ -1,43 +1,70 @@
-import { browser } from '$app/environment';
-import type { CartItem } from '$lib/type/cart';
+// src/lib/stores/cartStore.svelte.ts
+
+import type { CartItem } from '$lib/type/product';
+import { privateRequest } from '$lib/utils/axios';
 
 export class CartStore {
-    items = $state<CartItem[]>([]);
-    count = $derived(() => this.items.reduce((total, item) => total + item.quantity, 0));
-    total = $derived(() => this.items.reduce((total, item) => total + item.price * item.quantity, 0));
-    key = 'cart';
+	items = $state<any[]>([]);
+	loaded = $state<boolean>(false);
 
-    constructor() {
-        if (browser) {
-            const cartRaw = localStorage.getItem(this.key);
-            const parsedCart = cartRaw ? JSON.parse(cartRaw) : [];
-            this.items = Array.isArray(parsedCart) ? parsedCart : [];
-        }
+	// 2. Reactive getters (NOT functions)
+	get count() {
+		return this.items.length;
+	}
+	get total() {
+		return this.items.reduce((acc, i) => acc + Number(i.product.price) * i.quantity, 0);
+	}
 
-        $effect.root(() => {
-            $effect(() => {
-                if (browser) localStorage.setItem('cart', JSON.stringify(this.items));
-            });
-        });
-    }
+	// 3. Runs once on the client automatically
+	constructor() {
+		if (typeof window !== 'undefined') {
+			this.syncCart();
+		}
+	}
 
-    add(item: CartItem) {
-        const existingItem = this.items.find((i) => i.id === item.id);
+	async syncCart() {
+		try {
+			const res = await privateRequest.get<{ data: CartItem[] }>('/carts');
+			this.items = Array.isArray(res.data.data) ? res.data.data : [];
+		} catch (e) {
+			console.error('Failed to fetch cart:', e);
+			this.items = [];
+		} finally {
+			this.loaded = true;
+		}
+	}
 
-        if (existingItem) {
-            this.items = this.items.map((i) =>
-                i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
-            );
-        } else this.items.push(item);
-    }
+	// Use optimistic update or full sync pattern
+	async add(item: { productId: number; quantity: number }) {
+		const { productId, quantity } = item;
+		try {
+			await privateRequest.post('/carts', {
+				productId,
+				quantity
+			});
+			await this.syncCart();
+		} catch (e) {
+			console.error('Error adding cart item:', e);
+		}
+	}
 
-    remove(id: number) {
-        this.items = this.items.filter(i => i.id !== id)
-    }
+	async remove(id: number) {
+		try {
+			await privateRequest.delete(`/carts/${id}`);
+			await this.syncCart();
+		} catch (e) {
+			console.error('Error removing item:', e);
+		}
+	}
 
-    clear() {
-        this.items = [];
-    }
+	async clear() {
+		try {
+			await privateRequest.post('/carts/clear');
+			this.items = [];
+		} catch (e) {
+			console.error('Error clearing cart:', e);
+		}
+	}
 }
 
 export const cart = new CartStore();

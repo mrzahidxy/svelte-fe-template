@@ -2,7 +2,7 @@ import axios from 'axios';
 import { PUBLIC_API_BASE_URL } from '$env/static/public';
 import { browser } from '$app/environment';
 import { invalidateAll } from '$app/navigation';
-import { authToken } from '$lib/stores/auth';
+import { authToken } from '$lib/stores/auth.svelte';
 import { get } from 'svelte/store';
 
 export const publicRequest = axios.create({
@@ -21,14 +21,10 @@ export const privateRequest = axios.create({
 privateRequest.interceptors.request.use(async (config) => {
   if (browser) {
 
-    const token = get(authToken);
-    if (token) {
-      config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    const token = authToken.current;
 
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = `${token}`;
     }
   }
 
@@ -39,8 +35,8 @@ privateRequest.interceptors.request.use(async (config) => {
 privateRequest.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      invalidateAll();
+    if (error.response?.status === 401 && browser) {
+      // invalidateAll();
       window.location.href = '/login';
     }
     return Promise.reject(error);

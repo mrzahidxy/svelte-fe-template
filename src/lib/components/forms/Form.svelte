@@ -5,7 +5,8 @@
 <script lang="ts" generics="T extends Record<string, unknown>">
 	import { goto } from '$app/navigation';
 
-	import { authToken } from '$lib/stores/auth';
+	import { authToken } from '$lib/stores/auth.svelte';
+	import { cart } from '$lib/stores/cartStore.svelte';
 
 	import SuperDebug, { superForm } from 'sveltekit-superforms';
 	import type { SuperValidated } from 'sveltekit-superforms';
@@ -21,6 +22,7 @@
 		onUpdated({ form }) {
 			if (form.valid && form.message) {
 				authToken.set(form.message);
+				cart.syncCart()
 				goto('/');
 			}
 		}

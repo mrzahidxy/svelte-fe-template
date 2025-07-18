@@ -1,19 +1,16 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { authToken } from '$lib/stores/auth';
+	import { authToken } from '$lib/stores/auth.svelte';
 	import { onMount } from 'svelte';
 
 	let { children } = $props();
 
-	let token: string | null;
+
+	console.log('Protected Layout', authToken.current);
 
 	onMount(() => {
-		const unsubscribe = authToken.subscribe((t) => (token = t));
-
-		if (!token) goto('/login');
-		return unsubscribe;
+		if (!authToken.current) goto('/login');
 	});
 </script>
 
-<span>Admin</span>
 {@render children()}
